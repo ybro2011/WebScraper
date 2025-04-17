@@ -1,17 +1,10 @@
 #!/bin/bash
 
-# Activate virtual environment if it exists
-if [ -d "antenv" ]; then
-    source antenv/bin/activate
-fi
-
-# Install dependencies if requirements.txt exists
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-fi
+# Install dependencies
+pip install -r requirements.txt
 
 # Install Playwright browsers
 playwright install chromium
 
 # Start the application
-gunicorn --bind=0.0.0.0:$PORT --timeout 600 main:app 
+gunicorn --bind=0.0.0.0:8000 --timeout 600 main:app 
