@@ -1,1 +1,1 @@
-gunicorn --bind=0.0.0.0:8000 --timeout 600 main:app
+gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 4 --threads 2 --access-logfile '-' --error-logfile '-' main:app
