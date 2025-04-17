@@ -15,6 +15,10 @@ export PYTHONPATH=/home/site/wwwroot
 export FLASK_APP=main.py
 export FLASK_ENV=production
 
+# Get the port from Azure App Service
+PORT=${PORT:-8000}
+echo "Using port: $PORT"
+
 # Start the application
 echo "Starting Gunicorn..."
-exec gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 4 --threads 2 --access-logfile '-' --error-logfile '-' main:app 
+exec gunicorn --bind=0.0.0.0:$PORT --timeout 600 --workers 4 --threads 2 --access-logfile '-' --error-logfile '-' main:app 
