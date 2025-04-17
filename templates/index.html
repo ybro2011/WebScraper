@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Data Collector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Business Data Collector</h1>
+        <form method="POST" action="/" id="searchForm">
+            <div class="form-group">
+                <label for="api_key">Google Places API Key:</label>
+                <input type="password" id="api_key" name="api_key" required>
+            </div>
+            <div class="form-group">
+                <label for="location">Central Coordinates (latitude,longitude):</label>
+                <input type="text" id="location" name="location" placeholder="e.g., 37.7749,-122.4194" required>
+            </div>
+            <div class="form-group">
+                <label for="industry">Industry:</label>
+                <input type="text" id="industry" name="industry" placeholder="e.g., accountants" required>
+            </div>
+            <button type="submit" id="searchButton">Search</button>
+        </form>
+        <div class="results-container">
+            <div id="status" class="status-area"></div>
+            <div id="results" class="results-section" style="display: none;">
+                <div class="table-container">
+                    <table id="previewTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Website</th>
+                                <th>Address</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <button id="downloadButton" class="download-button" disabled>Download Excel</button>
+            </div>
+        </div>
+        {% if message %}
+        <div class="message">{{ message }}</div>
+        {% endif %}
+    </div>
+    <script>
+        const form = document.getElementById('searchForm');
+        const statusArea = document.getElementById('status');
+        const searchButton = document.getElementById('searchButton');
+        const resultsSection = document.getElementById('results');
+        const previewTable = document.getElementById('previewTable').getElementsByTagName('tbody')[0];
+        const downloadButton = document.getElementById('downloadButton');
+        let currentFilePath = '';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            statusArea.innerHTML = '';
+            searchButton.disabled = true;
+            searchButton.textContent = 'Searching...';
+            resultsSection.style.display = 'none';
+            previewTable.innerHTML = '';
+            downloadButton.disabled = true;
+
+            const formData = new FormData(form);
+            const response = await fetch('/search', {
+                method: 'POST',
+                body: formData
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let lastMessage = '';
+
+            while (true) {
+                const {value, done} = await reader.read();
+                if (done) break;
+                const text = decoder.decode(value);
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const message = line.slice(6);
+                        lastMessage = message;
+                        const statusLine = document.createElement('div');
+                        statusLine.textContent = message;
+                        statusArea.appendChild(statusLine);
+                        statusArea.scrollTop = statusArea.scrollHeight;
+
+                        // Check if this is the final success message
+                        if (message.includes('Success!') && message.includes('saved to')) {
+                            const filePath = message.split('saved to ')[1];
+                            currentFilePath = filePath;
+                            resultsSection.style.display = 'block';
+                            downloadButton.disabled = false;
+                            // Fetch and display the preview
+                            fetch('/preview?file=' + encodeURIComponent(filePath))
+                                .then(response => response.json())
+                                .then(data => {
+                                    previewTable.innerHTML = '';
+                                    data.forEach(business => {
+                                        const row = previewTable.insertRow();
+                                        row.insertCell(0).textContent = business.name || '';
+                                        row.insertCell(1).textContent = business.website || '';
+                                        row.insertCell(2).textContent = business.formatted_address || '';
+                                        row.insertCell(3).textContent = business.email || '';
+                                    });
+                                });
+                        }
+                    }
+                }
+            }
+
+            searchButton.disabled = false;
+            searchButton.textContent = 'Search';
+        });
+
+        downloadButton.addEventListener('click', () => {
+            if (currentFilePath) {
+                window.location.href = '/download?file=' + encodeURIComponent(currentFilePath);
+            }
+        });
+    </script>
+</body>
+</html> 
