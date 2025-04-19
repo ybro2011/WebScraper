@@ -7,12 +7,22 @@ import re
 from playwright.sync_api import sync_playwright
 import json
 from dotenv import load_dotenv
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24))
+
+# Log environment variables
+logger.info(f"FLASK_ENV: {os.getenv('FLASK_ENV')}")
+logger.info(f"PORT: {os.getenv('PORT')}")
+logger.info(f"PYTHONPATH: {os.getenv('PYTHONPATH')}")
 
 def search_places(gmaps, location, industry, radius=500):
     places = []
@@ -46,7 +56,7 @@ def fetch_emails_from_website(url):
             found_emails = re.findall(r'[\w\.-]+@[\w\.-]+', page_content)
             emails.update(found_emails)
         except Exception as e:
-            print(f"Error fetching {url}: {e}")
+            logger.error(f"Error fetching {url}: {e}")
         finally:
             browser.close()
     return ', '.join(emails)
@@ -107,6 +117,7 @@ def generate_updates(api_key, location, industry):
         yield f"data: Success! Found {len(businesses)} businesses. Results saved to {file_path}\n\n"
         
     except Exception as e:
+        logger.error(f"Error in generate_updates: {e}")
         yield f"data: Error: {str(e)}\n\n"
 
 @app.route('/', methods=['GET'])
@@ -154,9 +165,5 @@ def download():
         as_attachment=True,
         download_name=os.path.basename(file_path)
     )
-
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
 
 
